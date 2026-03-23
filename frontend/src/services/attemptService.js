@@ -11,3 +11,6 @@ export const submitAttempt = (attemptId) =>
 
 export const getMyAttempts = () =>
   api.get("/student/attempts/my");
+
+export const reviewAttempt = (attemptId) =>
+  api.get(`/student/attempts/${attemptId}/review`);

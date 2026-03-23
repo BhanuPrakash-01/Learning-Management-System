@@ -29,7 +29,7 @@ export default function Login() {
       const decoded = jwtDecode(token);
       const role = decoded.role;
 
-      navigate(role === "ADMIN" ? "/admin/dashboard" : "/student/dashboard");
+      navigate(role === "ADMIN" ? "/admin/dashboard" : "/student/home");
     } catch (err) {
       setError(err.response?.data?.error || "Login failed. Check your credentials.");
     } finally {

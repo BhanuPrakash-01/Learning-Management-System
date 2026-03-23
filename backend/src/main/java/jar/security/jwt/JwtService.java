@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.Map;
 
 @Service
 public class JwtService {
@@ -16,15 +17,21 @@ public class JwtService {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
     }
 
-    public String generateToken(String email,String role) {
+    public String generateToken(String email, String role) {
+        return generateToken(email, role, Map.of());
+    }
 
-        return Jwts.builder()
+    public String generateToken(String email, String role, Map<String, Object> claims) {
+
+        JwtBuilder builder = Jwts.builder()
                 .setSubject(email)
                 .claim("role", role)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + 86400000))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-                .compact();
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256);
+
+        claims.forEach(builder::claim);
+        return builder.compact();
     }
 
     public String extractEmail(String token) {

@@ -1,27 +1,26 @@
 import { useEffect, useState } from "react";
 import Layout from "../../components/Layout";
-import { getMyAttempts } from "../../services/attemptService";
-
-function getResultBadge(attempt) {
-  if (!attempt.submitted) return ["badge badge-warning", "In Progress"];
-  if (attempt.score >= 8) return ["badge badge-success", "Excellent"];
-  if (attempt.score >= 5) return ["badge badge-primary", "Completed"];
-  return ["badge badge-danger", "Needs Review"];
-}
+import { reviewAttempt } from "../../services/attemptService";
+import { getStudentResults } from "../../services/resultsService";
 
 export default function MyResults() {
-  const [attempts, setAttempts] = useState([]);
+  const [data, setData] = useState(null);
+  const [reviewData, setReviewData] = useState(null);
+  const [reviewError, setReviewError] = useState("");
 
   useEffect(() => {
-    loadAttempts();
+    getStudentResults()
+      .then((res) => setData(res.data))
+      .catch((err) => console.error(err));
   }, []);
 
-  const loadAttempts = async () => {
+  const openReview = async (attemptId) => {
+    setReviewError("");
     try {
-      const res = await getMyAttempts();
-      setAttempts(res.data);
-    } catch (error) {
-      console.error(error);
+      const res = await reviewAttempt(attemptId);
+      setReviewData(res.data);
+    } catch (err) {
+      setReviewError(err.response?.data?.error || "Failed to load review.");
     }
   };
 
@@ -29,57 +28,113 @@ export default function MyResults() {
     <Layout>
       <section className="hero-panel">
         <div className="hero-copy">
-          <div className="eyebrow">My results</div>
-          <h1 className="page-title">Review your performance across submitted assessments.</h1>
-          <p className="page-subtitle">
-            Track scores, attempt history, and submission status in one place.
-          </p>
-        </div>
-        <div className="hero-aside">
-          <div className="hero-badge">
-            <span className="hero-badge-label">Recorded attempts</span>
-            <span className="hero-badge-value">{attempts.length}</span>
-          </div>
+          <div className="eyebrow">My Results</div>
+          <h1 className="page-title">Assessment and practice performance</h1>
+          <p className="page-subtitle">Track attempts, score trends, and detailed answer reviews.</p>
         </div>
       </section>
 
-      {attempts.length === 0 ? (
-        <div className="empty-state">
-          <p>No attempts yet. Take a test first.</p>
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-label">Total Attempts</div>
+          <div className="stat-value">{data?.summary?.totalAttempts ?? 0}</div>
         </div>
-      ) : (
-        <div className="card-grid">
-          {attempts.map((attempt) => {
-            const [badgeClass, badgeLabel] = getResultBadge(attempt);
+        <div className="stat-card">
+          <div className="stat-label">Average Score</div>
+          <div className="stat-value">{Math.round((data?.summary?.averageScore ?? 0) * 100) / 100}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Best Score</div>
+          <div className="stat-value">{Math.round((data?.summary?.bestScore ?? 0) * 100) / 100}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Practice Questions</div>
+          <div className="stat-value">{data?.summary?.totalPracticeQuestions ?? 0}</div>
+        </div>
+      </div>
 
-            return (
+      <section className="surface-panel">
+        <div className="section-heading">
+          <div>
+            <h2 className="section-title">Assessment History</h2>
+            <p className="section-subtitle">View score, submission time, and answer review.</p>
+          </div>
+        </div>
+
+        {!data?.attempts?.length ? (
+          <div className="empty-state mt-2">
+            <p>No assessment attempts yet.</p>
+          </div>
+        ) : (
+          <div className="card-grid mt-2">
+            {data.attempts.map((attempt) => (
               <article key={attempt.id} className="card">
-                <div className="list-card-top">
-                  <div>
-                    <h3>{attempt.assessment?.title || "Assessment"}</h3>
-                    <p>{attempt.assessment?.course?.title || "Course unavailable"}</p>
-                  </div>
-                  <span className={badgeClass}>{badgeLabel}</span>
-                </div>
-
-                <div className="card-meta">
-                  <div className="meta-item">
-                    <span>Score</span>
-                    <strong>{attempt.score ?? 0}</strong>
-                  </div>
-                  <div className="meta-item">
-                    <span>Started</span>
-                    <strong>{attempt.startTime ? new Date(attempt.startTime).toLocaleString() : "N/A"}</strong>
-                  </div>
-                  <div className="meta-item">
-                    <span>Finished</span>
-                    <strong>{attempt.endTime ? new Date(attempt.endTime).toLocaleString() : "N/A"}</strong>
-                  </div>
+                <h3>{attempt.assessment?.title || "Assessment"}</h3>
+                <p>Score: {attempt.score}</p>
+                <p>Time Taken: {attempt.totalQuestions ? `${attempt.correctAnswers}/${attempt.totalQuestions}` : "N/A"}</p>
+                <p style={{ color: "var(--text-muted)" }}>
+                  {attempt.endTime ? new Date(attempt.endTime).toLocaleString() : "Not submitted"}
+                </p>
+                <div className="card-actions">
+                  <button className="btn btn-secondary btn-sm" onClick={() => openReview(attempt.id)}>
+                    Review Answers
+                  </button>
                 </div>
               </article>
-            );
-          })}
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="surface-panel">
+        <div className="section-heading">
+          <div>
+            <h2 className="section-title">Practice History</h2>
+          </div>
         </div>
+        {!data?.practiceHistory?.length ? (
+          <div className="empty-state mt-2">
+            <p>No practice attempts yet.</p>
+          </div>
+        ) : (
+          <div className="card-grid mt-2">
+            {data.practiceHistory.slice(0, 10).map((entry, index) => (
+              <article key={`${entry.attemptedAt}-${index}`} className="card">
+                <h3>{entry.topic}</h3>
+                <p>{entry.correct ? "Correct" : "Incorrect"}</p>
+                <p style={{ color: "var(--text-muted)" }}>
+                  {entry.attemptedAt ? new Date(entry.attemptedAt).toLocaleString() : "N/A"}
+                </p>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {reviewError && <div className="alert alert-error">{reviewError}</div>}
+      {reviewData && (
+        <section className="surface-panel">
+          <div className="section-heading">
+            <div>
+              <h2 className="section-title">Review Answers</h2>
+            </div>
+            <button className="btn btn-danger btn-sm" onClick={() => setReviewData(null)}>
+              Close
+            </button>
+          </div>
+          <div className="card-grid mt-2">
+            {reviewData.answers?.map((answer) => (
+              <article key={answer.questionId} className="card">
+                <h3>{answer.questionText}</h3>
+                <p style={{ color: answer.correct ? "var(--success)" : "var(--danger)" }}>
+                  Your answer: {answer.yourAnswer || "Not answered"}
+                </p>
+                <p>Correct answer: {answer.correctAnswer}</p>
+                <p>{answer.explanation || "No explanation available."}</p>
+              </article>
+            ))}
+          </div>
+        </section>
       )}
     </Layout>
   );

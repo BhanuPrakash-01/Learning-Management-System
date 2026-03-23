@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -34,7 +35,11 @@ public class AuthController {
             return ResponseEntity.ok(Map.of(
                 "message", "Registration successful",
                 "name", user.getName(),
-                "email", user.getEmail()
+                "email", user.getEmail(),
+                "rollNumber", user.getRollNumber(),
+                "branch", user.getBranch(),
+                "batchYear", user.getBatchYear(),
+                "section", user.getSection()
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -56,15 +61,22 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid password"));
         }
 
-        String token = jwtService.generateToken(
-            user.getEmail(),
-            user.getRole().name()
-        );
-
-        return ResponseEntity.ok(Map.of(
-            "token", token,
-            "role", user.getRole().name(),
-            "name", user.getName()
+        String token = jwtService.generateToken(user.getEmail(), user.getRole().name(), Map.of(
+                "name", user.getName(),
+                "rollNumber", user.getRollNumber() == null ? "" : user.getRollNumber(),
+                "branch", user.getBranch() == null ? "" : user.getBranch(),
+                "batchYear", user.getBatchYear() == null ? 0 : user.getBatchYear(),
+                "section", user.getSection() == null ? "" : user.getSection()
         ));
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("token", token);
+        response.put("role", user.getRole().name());
+        response.put("name", user.getName());
+        response.put("rollNumber", user.getRollNumber());
+        response.put("branch", user.getBranch());
+        response.put("batchYear", user.getBatchYear());
+        response.put("section", user.getSection());
+        return ResponseEntity.ok(response);
     }
 }

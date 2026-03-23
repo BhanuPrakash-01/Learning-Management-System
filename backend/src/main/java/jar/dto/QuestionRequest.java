@@ -14,5 +14,11 @@ public class QuestionRequest {
 
     private String correctAnswer;
 
+    private String subject;
+
+    private String topic;
+
+    private String difficulty;
+
     private Long assessmentId;
 }

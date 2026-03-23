@@ -33,7 +33,17 @@ public class Attempt {
 
     private LocalDateTime endTime;
 
-    private int score;
+    private double score;
+
+    private int totalQuestions;
+
+    private int correctAnswers;
+
+    private int wrongAnswers;
+
+    private int unanswered;
+
+    private int attemptNumber;
 
     private boolean submitted;
 }

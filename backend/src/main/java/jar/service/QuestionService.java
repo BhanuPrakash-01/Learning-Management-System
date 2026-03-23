@@ -2,6 +2,7 @@ package jar.service;
 
 import jar.dto.QuestionRequest;
 import jar.entity.Question;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -16,4 +17,6 @@ public interface QuestionService {
     Question updateQuestion(Long id, QuestionRequest request);
 
     void deleteQuestion(Long id);
+
+    List<Question> bulkUpload(MultipartFile file) throws Exception;
 }

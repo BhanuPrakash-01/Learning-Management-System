@@ -13,7 +13,7 @@ public interface AssessmentService {
 
     Assessment getById(Long id);
 
-    List<Assessment> getByCourse(Long courseId);
+    List<Assessment> getVisibleForStudent(String email);
 
     Assessment updateAssessment(Long id, AssessmentRequest request);
 

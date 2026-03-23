@@ -18,4 +18,10 @@ public interface AttemptRepository
     );
 
     List<Attempt> findByStudent(User student);
+
+    List<Attempt> findByAssessment(Assessment assessment);
+
+    long countByStudentAndAssessmentAndSubmittedTrue(User student, Assessment assessment);
+
+    List<Attempt> findByAssessmentAndSubmittedTrue(Assessment assessment);
 }

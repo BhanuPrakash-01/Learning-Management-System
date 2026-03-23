@@ -3,6 +3,7 @@ package jar.controller;
 import jar.entity.Assessment;
 import jar.service.AssessmentService;
 
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,12 +19,7 @@ public class StudentAssessmentController {
     }
 
     @GetMapping
-    public List<Assessment> getAll() {
-        return assessmentService.getAll();
-    }
-
-    @GetMapping("/course/{courseId}")
-    public List<Assessment> byCourse(@PathVariable Long courseId) {
-        return assessmentService.getByCourse(courseId);
+    public List<Assessment> getVisibleForMe(Authentication auth) {
+        return assessmentService.getVisibleForStudent(auth.getName());
     }
 }

@@ -3,33 +3,46 @@ import ProtectedRoute from "./ProtectedRoute";
 
 import Login from "../pages/Login";
 import Register from "../pages/Register";
-import StudentDashboard from "../pages/student/StudentDashboard";
-import AdminDashboard from "../pages/admin/AdminDashboard";
+
+import StudentHome from "../pages/student/Home";
 import Assessments from "../pages/student/Assessments";
 import TakeTest from "../pages/student/TakeTest";
 import MyResults from "../pages/student/MyResults";
-import Courses from "../pages/admin/Courses";
-import AdminAssessments from "../pages/admin/Assessments";
-import Questions from "../pages/admin/Questions";
+import Practice from "../pages/student/Practice";
+import CodingLab from "../pages/student/CodingLab";
+import Leaderboard from "../pages/student/Leaderboard";
+import Profile from "../pages/student/Profile";
+
+import AdminDashboard from "../pages/admin/AdminDashboard";
+import Students from "../pages/admin/Students";
+import ContentHub from "../pages/admin/ContentHub";
+import PracticeManager from "../pages/admin/PracticeManager";
+import LeaderboardConfig from "../pages/admin/LeaderboardConfig";
+import Reports from "../pages/admin/Reports";
+import Settings from "../pages/admin/Settings";
 
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* Auth */}
       <Route path="/" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* Student */}
-      <Route path="/student/dashboard" element={<ProtectedRoute><StudentDashboard /></ProtectedRoute>} />
+      <Route path="/student/home" element={<ProtectedRoute><StudentHome /></ProtectedRoute>} />
       <Route path="/student/assessments" element={<ProtectedRoute><Assessments /></ProtectedRoute>} />
       <Route path="/student/test/:assessmentId" element={<ProtectedRoute><TakeTest /></ProtectedRoute>} />
+      <Route path="/student/practice" element={<ProtectedRoute><Practice /></ProtectedRoute>} />
+      <Route path="/student/coding" element={<ProtectedRoute><CodingLab /></ProtectedRoute>} />
+      <Route path="/student/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
       <Route path="/student/results" element={<ProtectedRoute><MyResults /></ProtectedRoute>} />
+      <Route path="/student/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
-      {/* Admin */}
       <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-      <Route path="/admin/courses" element={<ProtectedRoute><Courses /></ProtectedRoute>} />
-      <Route path="/admin/assessments" element={<ProtectedRoute><AdminAssessments /></ProtectedRoute>} />
-      <Route path="/admin/questions" element={<ProtectedRoute><Questions /></ProtectedRoute>} />
+      <Route path="/admin/students" element={<ProtectedRoute><Students /></ProtectedRoute>} />
+      <Route path="/admin/content" element={<ProtectedRoute><ContentHub /></ProtectedRoute>} />
+      <Route path="/admin/practice" element={<ProtectedRoute><PracticeManager /></ProtectedRoute>} />
+      <Route path="/admin/leaderboard" element={<ProtectedRoute><LeaderboardConfig /></ProtectedRoute>} />
+      <Route path="/admin/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+      <Route path="/admin/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
     </Routes>
   );
 }

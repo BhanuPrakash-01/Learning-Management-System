@@ -27,6 +27,12 @@ public class Question {
 
     private String correctAnswer; // A, B, C, D
 
+    private String subject;
+
+    private String topic;
+
+    private String difficulty;
+
     @ManyToOne
     @JoinColumn(name = "assessment_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})

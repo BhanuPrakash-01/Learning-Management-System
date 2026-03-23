@@ -21,9 +21,7 @@ public class StudentEnrollmentController {
     @PostMapping("/{courseId}")
     public Enrollment enroll(@PathVariable Long courseId,
                              Authentication authentication) {
-
-        String email = authentication.getName();
-        return enrollmentService.enroll(courseId, email);
+        throw new RuntimeException("Manual enrollment is disabled. Access is assigned by branch and batch.");
     }
 
     @GetMapping
