@@ -25,17 +25,10 @@ public class AttemptScheduler {
     @Scheduled(fixedRate = 60000) // every 1 minute
     public void autoSubmitExpiredAttempts() {
 
-        List<Attempt> attempts =
-                attemptRepo.findAll();
+        List<Attempt> attempts = attemptRepo.findBySubmittedFalseAndDeadlineBefore(LocalDateTime.now());
 
         for (Attempt a : attempts) {
-
-            if (!a.isSubmitted()
-                    && LocalDateTime.now()
-                    .isAfter(a.getDeadline())) {
-
-                attemptService.submitAttempt(a.getId());
-            }
+            attemptService.submitAttempt(a.getId());
         }
     }
 }

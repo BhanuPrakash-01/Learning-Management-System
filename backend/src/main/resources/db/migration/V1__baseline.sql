@@ -1,0 +1,2 @@
+-- Baseline migration for existing LMS schema.
+-- Existing deployments can baseline at this version and apply future incremental migrations.

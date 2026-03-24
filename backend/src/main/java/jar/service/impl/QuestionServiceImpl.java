@@ -9,14 +9,19 @@ import jar.entity.Question;
 import jar.repository.AssessmentRepository;
 import jar.repository.QuestionRepository;
 import jar.service.QuestionService;
+import jar.service.security.InputSanitizerService;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -24,14 +29,17 @@ public class QuestionServiceImpl implements QuestionService {
 
     private final QuestionRepository questionRepo;
     private final AssessmentRepository assessmentRepo;
+    private final InputSanitizerService sanitizer;
 
     // ✅ Valid values for the correctAnswer column
     private static final Set<String> VALID_ANSWERS = Set.of("A", "B", "C", "D");
 
     public QuestionServiceImpl(QuestionRepository questionRepo,
-                               AssessmentRepository assessmentRepo) {
+                               AssessmentRepository assessmentRepo,
+                               InputSanitizerService sanitizer) {
         this.questionRepo = questionRepo;
         this.assessmentRepo = assessmentRepo;
+        this.sanitizer = sanitizer;
     }
 
     @Override
@@ -40,15 +48,15 @@ public class QuestionServiceImpl implements QuestionService {
                 .orElseThrow(() -> new RuntimeException("Assessment not found"));
 
         Question question = Question.builder()
-                .questionText(request.getQuestionText())
-                .optionA(request.getOptionA())
-                .optionB(request.getOptionB())
-                .optionC(request.getOptionC())
-                .optionD(request.getOptionD())
-                .correctAnswer(request.getCorrectAnswer())
-                .subject(request.getSubject())
-                .topic(request.getTopic())
-                .difficulty(request.getDifficulty())
+                .questionText(sanitizer.sanitizeRichText(request.getQuestionText()))
+                .optionA(sanitizer.sanitizePlainText(request.getOptionA()))
+                .optionB(sanitizer.sanitizePlainText(request.getOptionB()))
+                .optionC(sanitizer.sanitizePlainText(request.getOptionC()))
+                .optionD(sanitizer.sanitizePlainText(request.getOptionD()))
+                .correctAnswer(sanitizer.sanitizePlainText(request.getCorrectAnswer()))
+                .subject(sanitizer.sanitizePlainText(request.getSubject()))
+                .topic(sanitizer.sanitizePlainText(request.getTopic()))
+                .difficulty(sanitizer.sanitizePlainText(request.getDifficulty()))
                 .assessment(assessment)
                 .build();
 
@@ -61,10 +69,36 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     @Override
+    public Page<Question> getAll(Pageable pageable) {
+        return questionRepo.findAll(pageable);
+    }
+
+    @Override
     public List<Question> getByAssessment(Long assessmentId) {
         Assessment assessment = assessmentRepo.findById(assessmentId)
                 .orElseThrow(() -> new RuntimeException("Assessment not found"));
         return questionRepo.findByAssessment(assessment);
+    }
+
+    @Override
+    public Page<Question> searchLibrary(String search,
+                                        Long assessmentId,
+                                        String difficulty,
+                                        String topic,
+                                        Pageable pageable) {
+        return questionRepo.searchLibrary(search, assessmentId, difficulty, topic, pageable);
+    }
+
+    @Override
+    public Map<Long, Long> assessmentQuestionCounts() {
+        Map<Long, Long> counts = new HashMap<>();
+        for (Object[] row : questionRepo.countByAssessmentGrouped()) {
+            if (row[0] == null || row[1] == null) {
+                continue;
+            }
+            counts.put((Long) row[0], (Long) row[1]);
+        }
+        return counts;
     }
 
     @Override
@@ -75,15 +109,15 @@ public class QuestionServiceImpl implements QuestionService {
         Assessment assessment = assessmentRepo.findById(request.getAssessmentId())
                 .orElseThrow(() -> new RuntimeException("Assessment not found"));
 
-        question.setQuestionText(request.getQuestionText());
-        question.setOptionA(request.getOptionA());
-        question.setOptionB(request.getOptionB());
-        question.setOptionC(request.getOptionC());
-        question.setOptionD(request.getOptionD());
-        question.setCorrectAnswer(request.getCorrectAnswer());
-        question.setSubject(request.getSubject());
-        question.setTopic(request.getTopic());
-        question.setDifficulty(request.getDifficulty());
+        question.setQuestionText(sanitizer.sanitizeRichText(request.getQuestionText()));
+        question.setOptionA(sanitizer.sanitizePlainText(request.getOptionA()));
+        question.setOptionB(sanitizer.sanitizePlainText(request.getOptionB()));
+        question.setOptionC(sanitizer.sanitizePlainText(request.getOptionC()));
+        question.setOptionD(sanitizer.sanitizePlainText(request.getOptionD()));
+        question.setCorrectAnswer(sanitizer.sanitizePlainText(request.getCorrectAnswer()));
+        question.setSubject(sanitizer.sanitizePlainText(request.getSubject()));
+        question.setTopic(sanitizer.sanitizePlainText(request.getTopic()));
+        question.setDifficulty(sanitizer.sanitizePlainText(request.getDifficulty()));
         question.setAssessment(assessment);
 
         return questionRepo.save(question);
@@ -92,6 +126,14 @@ public class QuestionServiceImpl implements QuestionService {
     @Override
     public void deleteQuestion(Long id) {
         questionRepo.deleteById(id);
+    }
+
+    @Override
+    public void deleteQuestions(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        questionRepo.deleteAllById(ids);
     }
 
     // ✅ NEW: Bulk CSV upload
@@ -214,15 +256,15 @@ public class QuestionServiceImpl implements QuestionService {
 
                 // ── All checks passed — stage for saving ───────────────────────────
                 toSave.add(Question.builder()
-                        .questionText(questionText)
-                        .optionA(optionA)
-                        .optionB(optionB)
-                        .optionC(optionC)
-                        .optionD(optionD)
-                        .correctAnswer(correctAnswer)
-                        .subject(subject)
-                        .topic(topic)
-                        .difficulty(difficulty)
+                        .questionText(sanitizer.sanitizeRichText(questionText))
+                        .optionA(sanitizer.sanitizePlainText(optionA))
+                        .optionB(sanitizer.sanitizePlainText(optionB))
+                        .optionC(sanitizer.sanitizePlainText(optionC))
+                        .optionD(sanitizer.sanitizePlainText(optionD))
+                        .correctAnswer(sanitizer.sanitizePlainText(correctAnswer))
+                        .subject(sanitizer.sanitizePlainText(subject))
+                        .topic(sanitizer.sanitizePlainText(topic))
+                        .difficulty(sanitizer.sanitizePlainText(difficulty))
                         .assessment(assessment)
                         .build());
             }

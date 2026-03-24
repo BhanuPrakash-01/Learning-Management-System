@@ -4,6 +4,7 @@ import jar.dto.CourseRequest;
 import jar.entity.Course;
 import jar.repository.CourseRepository;
 import jar.service.CourseService;
+import jar.service.security.InputSanitizerService;
 
 import org.springframework.stereotype.Service;
 
@@ -13,18 +14,21 @@ import java.util.List;
 public class CourseServiceImpl implements CourseService {
 
     private final CourseRepository courseRepository;
+    private final InputSanitizerService sanitizer;
 
-    public CourseServiceImpl(CourseRepository courseRepository) {
+    public CourseServiceImpl(CourseRepository courseRepository,
+                             InputSanitizerService sanitizer) {
         this.courseRepository = courseRepository;
+        this.sanitizer = sanitizer;
     }
 
     @Override
     public Course createCourse(CourseRequest request) {
 
         Course course = Course.builder()
-                .title(request.getTitle())
-                .description(request.getDescription())
-                .instructor(request.getInstructor())
+                .title(sanitizer.sanitizePlainText(request.getTitle()))
+                .description(sanitizer.sanitizeRichText(request.getDescription()))
+                .instructor(sanitizer.sanitizePlainText(request.getInstructor()))
                 .duration(request.getDuration())
                 .build();
 
@@ -48,9 +52,9 @@ public class CourseServiceImpl implements CourseService {
         Course course = courseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Course not found"));
 
-        course.setTitle(request.getTitle());
-        course.setDescription(request.getDescription());
-        course.setInstructor(request.getInstructor());
+        course.setTitle(sanitizer.sanitizePlainText(request.getTitle()));
+        course.setDescription(sanitizer.sanitizeRichText(request.getDescription()));
+        course.setInstructor(sanitizer.sanitizePlainText(request.getInstructor()));
         course.setDuration(request.getDuration());
 
         return courseRepository.save(course);

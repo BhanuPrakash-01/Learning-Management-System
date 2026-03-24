@@ -4,6 +4,7 @@ import jar.entity.Attempt;
 import jar.entity.CodingSubmission;
 import jar.entity.LeaderboardScore;
 import jar.entity.PracticeAttempt;
+import jar.entity.Role;
 import jar.entity.User;
 import jar.repository.AttemptRepository;
 import jar.repository.CodingSubmissionRepository;
@@ -41,9 +42,7 @@ public class LeaderboardServiceImpl {
 
     @Scheduled(fixedRate = 900000)
     public void refreshLeaderboardScores() {
-        List<User> users = userRepo.findAll().stream()
-                .filter(u -> u.getRole() != null && u.getRole().name().equals("STUDENT"))
-                .toList();
+        List<User> users = userRepo.findByRole(Role.STUDENT);
 
         for (User user : users) {
             int assessmentScore = computeAssessmentScore(user);
@@ -63,7 +62,6 @@ public class LeaderboardServiceImpl {
     }
 
     public List<LeaderboardScore> getScores(String scope, User currentUser, Long assessmentId) {
-        refreshLeaderboardScores();
         List<LeaderboardScore> all = new ArrayList<>(leaderboardScoreRepo.findAllByOrderByTotalScoreDescLastUpdatedAsc());
         if (scope == null || scope.isBlank() || scope.equals("global")) {
             return all;

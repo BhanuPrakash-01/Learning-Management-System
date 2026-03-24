@@ -9,6 +9,7 @@ import jar.entity.User;
 import jar.repository.AssessmentRepository;
 import jar.repository.AttemptAnswerRepository;
 import jar.repository.AttemptRepository;
+import jar.repository.EnrollmentRepository;
 import jar.repository.QuestionRepository;
 import jar.repository.UserRepository;
 import jar.service.AttemptService;
@@ -29,17 +30,20 @@ public class AttemptServiceImpl implements AttemptService {
     private final UserRepository userRepo;
     private final AssessmentRepository assessmentRepo;
     private final QuestionRepository questionRepo;
+    private final EnrollmentRepository enrollmentRepo;
 
     public AttemptServiceImpl(AttemptRepository attemptRepo,
                               AttemptAnswerRepository answerRepo,
                               UserRepository userRepo,
                               AssessmentRepository assessmentRepo,
-                              QuestionRepository questionRepo) {
+                              QuestionRepository questionRepo,
+                              EnrollmentRepository enrollmentRepo) {
         this.attemptRepo = attemptRepo;
         this.answerRepo = answerRepo;
         this.userRepo = userRepo;
         this.assessmentRepo = assessmentRepo;
         this.questionRepo = questionRepo;
+        this.enrollmentRepo = enrollmentRepo;
     }
 
     @Override
@@ -209,6 +213,9 @@ public class AttemptServiceImpl implements AttemptService {
         }
         if (!matchesTargets(assessment.getTargetSections(), student.getSection())) {
             throw new RuntimeException("Assessment is not assigned to your section");
+        }
+        if (assessment.getCourse() != null && !enrollmentRepo.existsByStudentAndCourse(student, assessment.getCourse())) {
+            throw new RuntimeException("You are not enrolled for this assessment's course");
         }
     }
 

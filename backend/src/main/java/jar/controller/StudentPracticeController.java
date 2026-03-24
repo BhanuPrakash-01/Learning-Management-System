@@ -2,7 +2,6 @@ package jar.controller;
 
 import jar.dto.PracticeAttemptRequest;
 import jar.entity.PracticeAttempt;
-import jar.entity.PracticeCategory;
 import jar.entity.PracticeQuestion;
 import jar.entity.PracticeStreak;
 import jar.entity.PracticeTopic;

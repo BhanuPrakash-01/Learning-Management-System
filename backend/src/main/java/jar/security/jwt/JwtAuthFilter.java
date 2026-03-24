@@ -1,6 +1,7 @@
 package jar.security.jwt;
 
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.ServletException;
@@ -29,12 +30,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String header = request.getHeader("Authorization");
+        String token = null;
 
         if (header != null && header.startsWith("Bearer ")) {
+            token = header.substring(7);
+        } else {
+            token = getCookieValue(request, "access_token");
+        }
 
-            String token = header.substring(7);
+        if (token != null && !token.isBlank() && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            if (jwtService.validateToken(token)) {
+            if (jwtService.validateAccessToken(token)) {
 
                 String email = jwtService.extractEmail(token);
                 String role = jwtService.extractRole(token);
@@ -60,5 +66,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String getCookieValue(HttpServletRequest request, String name) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null || cookies.length == 0) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if (name.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
     }
 }

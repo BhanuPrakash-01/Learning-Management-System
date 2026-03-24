@@ -2,19 +2,24 @@ package jar.controller;
 
 import jar.entity.Attempt;
 import jar.entity.LeaderboardScore;
-import jar.entity.User;
+import jar.entity.Role;
 import jar.repository.AssessmentRepository;
 import jar.repository.AttemptRepository;
 import jar.repository.LeaderboardScoreRepository;
 import jar.repository.UserRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -37,49 +42,36 @@ public class AdminDashboardStatsController {
     }
 
     @GetMapping("/stats")
-    public Map<String, Object> getStats() {
-        List<User> students = userRepo.findAll().stream()
-                .filter(user -> user.getRole() != null && user.getRole().name().equals("STUDENT"))
-                .toList();
-        List<Attempt> attempts = attemptRepo.findAll();
+    public Map<String, Object> getStats(@RequestParam(defaultValue = "10") int recentLimit,
+                                        @RequestParam(defaultValue = "100") int lowPerformerLimit) {
+        int safeRecentLimit = Math.max(1, Math.min(recentLimit, 100));
+        int safeLowPerformerLimit = Math.max(1, Math.min(lowPerformerLimit, 500));
 
-        long activeAssessments = assessmentRepo.findAll().stream()
-                .filter(a -> a.getStartTime() != null && a.getEndTime() != null)
-                .filter(a -> LocalDateTime.now().isAfter(a.getStartTime()) && LocalDateTime.now().isBefore(a.getEndTime()))
-                .count();
+        long totalStudents = userRepo.countByRole(Role.STUDENT);
+        long activeAssessments = assessmentRepo.countActiveAt(LocalDateTime.now());
+        double avgScore = Optional.ofNullable(attemptRepo.averageSubmittedScore()).orElse(0.0);
+        long studentsWithZeroAttempts = userRepo.countByRoleWithNoAttempts(Role.STUDENT);
 
-        double avgScore = attempts.stream()
-                .filter(Attempt::isSubmitted)
-                .mapToDouble(Attempt::getScore)
-                .average()
-                .orElse(0.0);
-
-        long studentsWithZeroAttempts = students.stream()
-                .filter(student -> attemptRepo.findByStudent(student).isEmpty())
-                .count();
-
-        Map<String, Long> branchBreakdown = students.stream()
-                .collect(Collectors.groupingBy(
-                        student -> student.getBranch() == null ? "UNKNOWN" : student.getBranch(),
-                        Collectors.counting()
+        Map<String, Long> branchBreakdown = userRepo.branchBreakdownByRole(Role.STUDENT).stream()
+                .collect(Collectors.toMap(
+                        row -> row[0] == null ? "UNKNOWN" : String.valueOf(row[0]),
+                        row -> ((Number) row[1]).longValue(),
+                        Long::sum,
+                        LinkedHashMap::new
                 ));
 
-        Map<Integer, Long> batchBreakdown = students.stream()
-                .collect(Collectors.groupingBy(
-                        student -> student.getBatchYear() == null ? 0 : student.getBatchYear(),
-                        Collectors.counting()
+        Map<Integer, Long> batchBreakdown = userRepo.batchBreakdownByRole(Role.STUDENT).stream()
+                .collect(Collectors.toMap(
+                        row -> row[0] == null ? 0 : ((Number) row[0]).intValue(),
+                        row -> ((Number) row[1]).longValue(),
+                        Long::sum,
+                        LinkedHashMap::new
                 ));
 
-        List<Map<String, Object>> recentActivity = attempts.stream()
-                .sorted((a, b) -> {
-                    LocalDateTime aTime = a.getEndTime() == null ? a.getStartTime() : a.getEndTime();
-                    LocalDateTime bTime = b.getEndTime() == null ? b.getStartTime() : b.getEndTime();
-                    if (aTime == null && bTime == null) return 0;
-                    if (aTime == null) return 1;
-                    if (bTime == null) return -1;
-                    return bTime.compareTo(aTime);
-                })
-                .limit(10)
+        List<Attempt> recentAttempts = attemptRepo.findRecentAttempts(
+                PageRequest.of(0, safeRecentLimit)
+        ).getContent();
+        List<Map<String, Object>> recentActivity = recentAttempts.stream()
                 .map(attempt -> {
                     Map<String, Object> item = new HashMap<>();
                     item.put("student", attempt.getStudent() == null ? "N/A" : safe(attempt.getStudent().getName()));
@@ -91,9 +83,9 @@ public class AdminDashboardStatsController {
                 })
                 .toList();
 
-        List<LeaderboardScore> top = leaderboardScoreRepo.findAllByOrderByTotalScoreDescLastUpdatedAsc().stream()
-                .limit(5)
-                .toList();
+        List<LeaderboardScore> top = leaderboardScoreRepo.findAllByOrderByTotalScoreDescLastUpdatedAsc(
+                PageRequest.of(0, 5)
+        ).getContent();
         List<Map<String, Object>> topPerformers = top.stream()
                 .map(score -> {
                     Map<String, Object> item = new HashMap<>();
@@ -106,9 +98,11 @@ public class AdminDashboardStatsController {
                 .toList();
 
         LocalDateTime twoWeeksAgo = LocalDateTime.now().minusDays(14);
-        List<Map<String, Object>> lowPerformers = students.stream()
-                .filter(student -> attemptRepo.findByStudent(student).stream()
-                        .noneMatch(attempt -> attempt.getStartTime() != null && attempt.getStartTime().isAfter(twoWeeksAgo)))
+        List<Map<String, Object>> lowPerformers = userRepo.findLowPerformers(
+                        Role.STUDENT,
+                        twoWeeksAgo,
+                        PageRequest.of(0, safeLowPerformerLimit, Sort.by("name").ascending())
+                ).getContent().stream()
                 .map(student -> {
                     Map<String, Object> item = new HashMap<>();
                     item.put("name", safe(student.getName()));
@@ -120,7 +114,7 @@ public class AdminDashboardStatsController {
                 .toList();
 
         Map<String, Object> response = new HashMap<>();
-        response.put("totalStudents", students.size());
+        response.put("totalStudents", totalStudents);
         response.put("activeAssessments", activeAssessments);
         response.put("avgScore", avgScore);
         response.put("studentsWithZeroAttempts", studentsWithZeroAttempts);

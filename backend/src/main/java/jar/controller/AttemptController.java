@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/student/attempts")
@@ -64,6 +65,17 @@ public class AttemptController {
                 .orElseThrow(() -> new RuntimeException("Attempt not found"));
         if (attempt.getStudent() == null || !attempt.getStudent().getEmail().equals(auth.getName())) {
             throw new RuntimeException("Unauthorized");
+        }
+        if (attempt.getAssessment() != null
+                && Boolean.TRUE.equals(attempt.getAssessment().getReviewAfterClose())
+                && attempt.getAssessment().getEndTime() != null) {
+            LocalDateTime closeAt = attempt.getAssessment().getEndTime();
+            if (Boolean.TRUE.equals(attempt.getAssessment().getAllowLateSubmission())) {
+                closeAt = closeAt.plusMinutes(15);
+            }
+            if (LocalDateTime.now().isBefore(closeAt)) {
+                throw new RuntimeException("Review will be available only after the assessment window closes.");
+            }
         }
 
         List<AttemptAnswer> answers = answerRepo.findByAttempt(attempt);

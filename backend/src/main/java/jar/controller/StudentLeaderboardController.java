@@ -29,13 +29,21 @@ public class StudentLeaderboardController {
     }
 
     @GetMapping
-    public List<Map<String, Object>> leaderboard(Authentication auth,
-                                                 @RequestParam(required = false, defaultValue = "global") String scope,
-                                                 @RequestParam(required = false) Long assessmentId) {
+    public Map<String, Object> leaderboard(Authentication auth,
+                                           @RequestParam(required = false, defaultValue = "global") String scope,
+                                           @RequestParam(required = false) Long assessmentId,
+                                           @RequestParam(required = false, defaultValue = "0") int cursor,
+                                           @RequestParam(required = false, defaultValue = "50") int size) {
         User current = userRepo.findByEmail(auth.getName()).orElseThrow(() -> new RuntimeException("Student not found"));
         List<LeaderboardScore> scores = leaderboardService.getScores(scope, current, assessmentId);
-        AtomicInteger rank = new AtomicInteger(1);
-        return scores.stream().map(score -> {
+        int safeCursor = Math.max(cursor, 0);
+        int safeSize = Math.max(Math.min(size, 200), 1);
+        int from = Math.min(safeCursor, scores.size());
+        int to = Math.min(from + safeSize, scores.size());
+        List<LeaderboardScore> page = scores.subList(from, to);
+
+        AtomicInteger rank = new AtomicInteger(from + 1);
+        List<Map<String, Object>> rows = page.stream().map(score -> {
             Map<String, Object> row = new HashMap<>();
             row.put("rank", rank.getAndIncrement());
             row.put("studentId", score.getStudent().getId());
@@ -52,5 +60,14 @@ public class StudentLeaderboardController {
             row.put("isCurrentUser", score.getStudent().getId().equals(current.getId()));
             return row;
         }).toList();
+
+        Integer nextCursor = to < scores.size() ? to : null;
+        return Map.of(
+                "content", rows,
+                "cursor", safeCursor,
+                "size", safeSize,
+                "nextCursor", nextCursor,
+                "totalElements", scores.size()
+        );
     }
 }

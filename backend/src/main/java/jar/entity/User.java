@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "users")
 @Getter
@@ -43,6 +45,21 @@ public class User {
     @Column(name = "is_active")
     @Builder.Default
     private Boolean active = true;
+
+    @Column(name = "email_verified", nullable = false)
+    @Builder.Default
+    private Boolean emailVerified = false;
+
+    @Column(name = "force_password_change", nullable = false)
+    @Builder.Default
+    private Boolean forcePasswordChange = false;
+
+    @Column(name = "failed_login_attempts", nullable = false)
+    @Builder.Default
+    private Integer failedLoginAttempts = 0;
+
+    @Column(name = "lockout_until")
+    private LocalDateTime lockoutUntil;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

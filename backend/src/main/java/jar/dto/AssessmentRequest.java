@@ -12,6 +12,7 @@ public class AssessmentRequest {
     private String title;
     private String description;
     private int duration;
+    private Long courseId;
     private List<String> targetBranches;
     private List<Integer> targetBatchYears;
     private List<String> targetSections;
@@ -22,4 +23,5 @@ public class AssessmentRequest {
     private Integer maxAttempts;
     private Boolean negativeMarking;
     private BigDecimal penaltyFraction;
+    private Boolean reviewAfterClose;
 }

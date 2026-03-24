@@ -4,6 +4,7 @@ import jar.dto.RegisterRequest;
 import jar.entity.User;
 import jar.repository.UserRepository;
 import jar.service.UserService;
+import jar.service.security.InputSanitizerService;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,11 +22,14 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final InputSanitizerService sanitizer;
 
     public UserServiceImpl(UserRepository userRepository,
-                           PasswordEncoder passwordEncoder) {
+                           PasswordEncoder passwordEncoder,
+                           InputSanitizerService sanitizer) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.sanitizer = sanitizer;
     }
 
     @Override
@@ -33,15 +37,17 @@ public class UserServiceImpl implements UserService {
         validateRegistration(request);
 
         User user = User.builder()
-                .name(request.getName())
+                .name(sanitizer.sanitizePlainText(request.getName()))
                 .email(request.getEmail().toLowerCase())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .rollNumber(request.getRollNumber().toUpperCase())
-                .branch(request.getBranch())
+                .branch(sanitizer.sanitizePlainText(request.getBranch()))
                 .batchYear(request.getBatchYear())
                 .section(request.getSection().toUpperCase())
-                .phone(request.getPhone())
+                .phone(sanitizer.sanitizePlainText(request.getPhone()))
                 .active(true)
+                .emailVerified(false)
+                .forcePasswordChange(false)
                 .role(Role.STUDENT)
                 .build();
 

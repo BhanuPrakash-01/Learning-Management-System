@@ -4,6 +4,7 @@ import jar.dto.RegisterRequest;
 import jar.entity.User;
 import jar.repository.UserRepository;
 import jar.service.impl.UserServiceImpl;
+import jar.service.security.InputSanitizerService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,6 +17,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,6 +28,9 @@ class UserServiceImplTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private InputSanitizerService sanitizer;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -59,6 +64,7 @@ class UserServiceImplTest {
         when(userRepository.findByEmail(any())).thenReturn(Optional.empty());
         when(userRepository.findByRollNumber(any())).thenReturn(Optional.empty());
         when(passwordEncoder.encode(any())).thenReturn("encoded");
+        when(sanitizer.sanitizePlainText(anyString())).thenAnswer(inv -> inv.getArgument(0));
         when(userRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         User user = userService.register(request);

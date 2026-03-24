@@ -2,6 +2,8 @@ package jar.repository;
 
 import jar.entity.LeaderboardScore;
 import jar.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -11,4 +13,6 @@ public interface LeaderboardScoreRepository extends JpaRepository<LeaderboardSco
     Optional<LeaderboardScore> findByStudent(User student);
 
     List<LeaderboardScore> findAllByOrderByTotalScoreDescLastUpdatedAsc();
+
+    Page<LeaderboardScore> findAllByOrderByTotalScoreDescLastUpdatedAsc(Pageable pageable);
 }

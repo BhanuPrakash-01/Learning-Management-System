@@ -4,8 +4,14 @@ import jar.dto.LoginRequest;
 import jar.dto.RegisterRequest;
 import jar.entity.Role;
 import jar.entity.User;
+import jar.repository.UserRepository;
 import jar.security.jwt.JwtService;
 import jar.service.UserService;
+import jar.service.auth.AccountSecurityService;
+import jar.service.auth.AdminBootstrapService;
+import jar.service.security.AuthProtectionService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -32,6 +38,18 @@ class AuthControllerTest {
     @Mock
     private JwtService jwtService;
 
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private AuthProtectionService authProtectionService;
+
+    @Mock
+    private AccountSecurityService accountSecurityService;
+
+    @Mock
+    private AdminBootstrapService adminBootstrapService;
+
     @InjectMocks
     private AuthController authController;
 
@@ -57,8 +75,10 @@ class AuthControllerTest {
                 .build();
 
         when(userService.register(any())).thenReturn(user);
+        HttpServletRequest httpRequest = org.mockito.Mockito.mock(HttpServletRequest.class);
+        when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
 
-        ResponseEntity<?> response = authController.register(request);
+        ResponseEntity<?> response = authController.register(request, httpRequest);
         assertEquals(200, response.getStatusCode().value());
     }
 
@@ -72,17 +92,23 @@ class AuthControllerTest {
                 .name("Admin")
                 .email("admin@anurag.ac.in")
                 .password("encoded")
+                .emailVerified(true)
                 .role(Role.ADMIN)
                 .build();
 
         when(userService.findByEmail(request.getEmail())).thenReturn(user);
         when(passwordEncoder.matches("Password@123", "encoded")).thenReturn(true);
-        when(jwtService.generateToken(any(), any(), any())).thenReturn("jwt-token");
+        when(jwtService.generateAccessToken(any(), any(), any())).thenReturn("jwt-token");
+        when(jwtService.generateRefreshToken(any())).thenReturn("refresh-token");
 
-        ResponseEntity<?> response = authController.login(request);
+        HttpServletRequest httpRequest = org.mockito.Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse httpResponse = org.mockito.Mockito.mock(HttpServletResponse.class);
+        when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
+        when(httpRequest.isSecure()).thenReturn(false);
+
+        ResponseEntity<?> response = authController.login(request, httpRequest, httpResponse);
         assertEquals(200, response.getStatusCode().value());
         Map<?, ?> body = (Map<?, ?>) response.getBody();
-        assertEquals("jwt-token", body.get("token"));
         assertEquals("ADMIN", body.get("role"));
     }
 }

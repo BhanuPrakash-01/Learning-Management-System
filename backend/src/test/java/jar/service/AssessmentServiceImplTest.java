@@ -4,8 +4,11 @@ import jar.dto.AssessmentRequest;
 import jar.entity.Assessment;
 import jar.entity.User;
 import jar.repository.AssessmentRepository;
+import jar.repository.CourseRepository;
+import jar.repository.EnrollmentRepository;
 import jar.repository.UserRepository;
 import jar.service.impl.AssessmentServiceImpl;
+import jar.service.security.InputSanitizerService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -28,6 +31,15 @@ class AssessmentServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private CourseRepository courseRepository;
+
+    @Mock
+    private EnrollmentRepository enrollmentRepository;
+
+    @Mock
+    private InputSanitizerService sanitizer;
 
     @InjectMocks
     private AssessmentServiceImpl assessmentService;
@@ -80,6 +92,8 @@ class AssessmentServiceImplTest {
         request.setTargetSections(List.of("A"));
 
         when(assessmentRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(sanitizer.sanitizePlainText(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(sanitizer.sanitizeRichText(any())).thenAnswer(inv -> inv.getArgument(0));
 
         Assessment saved = assessmentService.createAssessment(request);
 

@@ -67,7 +67,7 @@ public class StudentCodingController {
                 .language(request.getLanguage())
                 .code(request.getCode())
                 .status(String.valueOf(eval.get("status")))
-                .testCasesPassed((Integer) eval.get("passed"))
+                .testCasesPassed((Integer) eval.getOrDefault("passed", 0))
                 .submittedAt(LocalDateTime.now())
                 .build();
         submissionRepo.save(submission);
@@ -76,6 +76,8 @@ public class StudentCodingController {
         response.put("submissionId", submission.getId());
         response.put("status", submission.getStatus());
         response.put("testCasesPassed", submission.getTestCasesPassed());
+        response.put("totalTestCases", eval.getOrDefault("total", 0));
+        response.put("details", eval.getOrDefault("details", List.of()));
         response.put("submittedAt", submission.getSubmittedAt());
         response.put("source", eval.get("source"));
         return response;

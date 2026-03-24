@@ -10,6 +10,7 @@ import jar.repository.CodingSubmissionRepository;
 import jar.repository.PracticeAttemptRepository;
 import jar.repository.StudentBadgeRepository;
 import jar.repository.UserRepository;
+import jar.service.security.InputSanitizerService;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,17 +31,20 @@ public class StudentProfileController {
     private final AttemptRepository attemptRepo;
     private final PracticeAttemptRepository practiceAttemptRepo;
     private final CodingSubmissionRepository codingSubmissionRepo;
+    private final InputSanitizerService sanitizer;
 
     public StudentProfileController(UserRepository userRepo,
                                     StudentBadgeRepository badgeRepo,
                                     AttemptRepository attemptRepo,
                                     PracticeAttemptRepository practiceAttemptRepo,
-                                    CodingSubmissionRepository codingSubmissionRepo) {
+                                    CodingSubmissionRepository codingSubmissionRepo,
+                                    InputSanitizerService sanitizer) {
         this.userRepo = userRepo;
         this.badgeRepo = badgeRepo;
         this.attemptRepo = attemptRepo;
         this.practiceAttemptRepo = practiceAttemptRepo;
         this.codingSubmissionRepo = codingSubmissionRepo;
+        this.sanitizer = sanitizer;
     }
 
     @GetMapping
@@ -79,10 +83,10 @@ public class StudentProfileController {
         User student = userRepo.findByEmail(auth.getName())
                 .orElseThrow(() -> new RuntimeException("Student not found"));
         if (request.containsKey("name")) {
-            student.setName(request.get("name"));
+            student.setName(sanitizer.sanitizePlainText(request.get("name")));
         }
         if (request.containsKey("phone")) {
-            String phone = request.get("phone");
+            String phone = sanitizer.sanitizePlainText(request.get("phone"));
             if (phone != null && !phone.isBlank() && !phone.matches("^[0-9]{10}$")) {
                 throw new RuntimeException("Phone number must be 10 digits");
             }

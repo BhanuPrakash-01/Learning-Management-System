@@ -57,6 +57,14 @@ public class Assessment {
     @Column(precision = 4, scale = 2)
     private BigDecimal penaltyFraction = new BigDecimal("0.25");
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "course_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Course course;
+
+    @Builder.Default
+    private Boolean reviewAfterClose = false;
+
     @Builder.Default
     private Boolean active = true;
 }
