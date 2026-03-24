@@ -52,6 +52,13 @@ function shuffleArray(arr) {
   return a;
 }
 
+function decodeHtmlEntities(value) {
+  if (value == null) return "";
+  const textarea = document.createElement("textarea");
+  textarea.innerHTML = String(value);
+  return textarea.value;
+}
+
 export default function TakeTest() {
   const { assessmentId } = useParams();
   const navigate = useNavigate();
@@ -286,7 +293,9 @@ export default function TakeTest() {
   if (loading) {
     return (
       <Layout>
-        <div className="loading">Loading assessment…</div>
+        <section className="surface-panel">
+          <div className="loading-skeleton" style={{ minHeight: "180px" }} />
+        </section>
       </Layout>
     );
   }
@@ -452,7 +461,7 @@ export default function TakeTest() {
         >
           <h4>
             <span className="q-number">Q{currentIndex + 1}</span>{" "}
-            {currentQuestion.questionText}
+            {decodeHtmlEntities(currentQuestion.questionText)}
           </h4>
 
           <div className="options-list">
@@ -469,8 +478,9 @@ export default function TakeTest() {
                   checked={answers[currentQuestion.id] === optionKey}
                   onChange={() => handleAnswer(currentQuestion.id, optionKey)}
                 />
-                <span>
-                  <strong>{optionKey}.</strong> {currentQuestion[`option${optionKey}`]}
+                <span className="option-text">
+                  <strong className="option-key">{optionKey}.</strong>
+                  <span>{decodeHtmlEntities(currentQuestion[`option${optionKey}`])}</span>
                 </span>
               </label>
             ))}

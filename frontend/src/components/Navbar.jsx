@@ -1,49 +1,31 @@
-import { NavLink, useNavigate } from "react-router-dom";
-import { jwtDecode } from "jwt-decode";
-
-function getUserFromToken(token) {
-  if (!token) return null;
-  try {
-    const decoded = jwtDecode(token);
-    return {
-      role: decoded.role || null,
-      name: decoded.name || decoded.sub || "User",
-      rollNumber: decoded.rollNumber || "",
-      branch: decoded.branch || "",
-      batchYear: decoded.batchYear || "",
-      section: decoded.section || "",
-    };
-  } catch {
-    localStorage.removeItem("token");
-    return null;
-  }
-}
+import { useContext, useMemo, useState } from "react";
+import { NavLink, Link, useNavigate } from "react-router-dom";
+import { AuthContext } from "../context/auth-context";
 
 export default function Navbar() {
+  const auth = useContext(AuthContext) || {};
+  const user = auth.user || null;
+  const logout = auth.logout || (() => Promise.resolve());
   const navigate = useNavigate();
-  const token = localStorage.getItem("token");
-  const user = getUserFromToken(token);
+  const [openMenu, setOpenMenu] = useState(false);
 
-  const links =
-    user?.role === "ADMIN"
-      ? [
-          { path: "/admin/dashboard", label: "Dashboard" },
-          { path: "/admin/students", label: "Students" },
-          { path: "/admin/content", label: "Content Hub" },
-          { path: "/admin/practice", label: "Practice" },
-          { path: "/admin/leaderboard", label: "Leaderboard Config" },
-          { path: "/admin/reports", label: "Reports" },
-          { path: "/admin/settings", label: "Settings" },
-        ]
-      : [
-          { path: "/student/home", label: "Home" },
-          { path: "/student/assessments", label: "Assessments" },
-          { path: "/student/practice", label: "Practice" },
-          { path: "/student/coding", label: "Coding Lab" },
-          { path: "/student/leaderboard", label: "Leaderboard" },
-          { path: "/student/results", label: "My Results" },
-          { path: "/student/profile", label: "My Profile" },
-        ];
+  const links = useMemo(() => {
+    if (user?.role === "ADMIN") {
+      return [
+        { path: "/admin/assessments", label: "Assessments" },
+        { path: "/admin/students", label: "Students" },
+        { path: "/admin/practice", label: "Practice" },
+        { path: "/admin/reports", label: "Reports" },
+      ];
+    }
+    return [
+      { path: "/student", label: "Home" },
+      { path: "/student/assessments", label: "Assessments" },
+      { path: "/student/practice", label: "Practice" },
+      { path: "/student/coding", label: "Coding Lab" },
+      { path: "/student/leaderboard", label: "Leaderboard" },
+    ];
+  }, [user?.role]);
 
   const initials = (user?.name || "U")
     .split(" ")
@@ -53,9 +35,20 @@ export default function Navbar() {
     .join("");
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/");
+    logout().finally(() => navigate("/"));
   };
+
+  const menuLinks =
+    user?.role === "ADMIN"
+      ? [
+          { to: "/admin/profile", label: "Profile" },
+          { to: "/change-password", label: "Change Password" },
+        ]
+      : [
+          { to: "/student/profile", label: "My Profile" },
+          { to: "/student/results", label: "My Results" },
+          { to: "/change-password", label: "Change Password" },
+        ];
 
   return (
     <header className="navbar">
@@ -63,7 +56,9 @@ export default function Navbar() {
         <div className="nav-brand">
           <div className="nav-brand-mark">AU</div>
           <div className="nav-brand-copy">
-            <span className="nav-brand-title">Anurag University LMS</span>
+            <Link to={user?.role === "ADMIN" ? "/admin" : "/student"} className="nav-brand-title">
+              Anurag University LMS
+            </Link>
             <span className="nav-brand-subtitle">
               {user?.role === "ADMIN" ? "Administration workspace" : "Student workspace"}
             </span>
@@ -91,10 +86,19 @@ export default function Navbar() {
                 {user.role === "STUDENT" && user.rollNumber ? ` · ${user.rollNumber}` : ""}
               </div>
             </div>
-            <div className="nav-avatar">{initials}</div>
-            <button className="btn btn-danger btn-sm" onClick={handleLogout}>
-              Logout
-            </button>
+            <button className="nav-avatar" onClick={() => setOpenMenu((prev) => !prev)}>{initials}</button>
+            {openMenu && (
+              <div className="nav-dropdown">
+                {menuLinks.map((item) => (
+                  <Link key={item.to} to={item.to} className="nav-dropdown-link" onClick={() => setOpenMenu(false)}>
+                    {item.label}
+                  </Link>
+                ))}
+                <button className="nav-dropdown-link danger" onClick={handleLogout}>
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

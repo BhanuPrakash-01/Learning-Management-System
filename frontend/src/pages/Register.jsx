@@ -77,8 +77,8 @@ export default function Register() {
         section: form.section.toUpperCase(),
         batchYear: Number(form.batchYear),
       });
-      setSuccess("Registration successful. Redirecting to login...");
-      setTimeout(() => navigate("/"), 1200);
+      setSuccess("Registration successful. Check your email to verify your account, then sign in.");
+      setTimeout(() => navigate("/"), 1800);
     } catch (err) {
       setError(err.response?.data?.error || "Registration failed.");
     } finally {

@@ -13,7 +13,7 @@ describe("StudentHome page", () => {
     await waitFor(() => {
       expect(screen.getByText(/Test User/)).toBeInTheDocument();
       expect(screen.getByText(/23EG106D01/)).toBeInTheDocument();
-      expect(screen.getByText(/Assigned Assessments/)).toBeInTheDocument();
+      expect(screen.getByText(/Upcoming Assessments/)).toBeInTheDocument();
     });
   });
 });

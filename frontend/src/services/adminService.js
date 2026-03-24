@@ -9,16 +9,25 @@ export const resetStudentPassword = (id) => api.patch(`/admin/students/${id}/res
 
 export const getAdminAssessments = () => api.get("/admin/assessments");
 export const createAssessment = (data) => api.post("/admin/assessments", data);
+export const createAssessmentWithQuestions = (formData) =>
+  api.post("/admin/assessments/with-questions", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
 export const updateAssessment = (id, data) => api.put(`/admin/assessments/${id}`, data);
 export const deleteAssessment = (id) => api.delete(`/admin/assessments/${id}`);
+export const getAdminCourses = () => api.get("/admin/courses");
+export const createCourse = (data) => api.post("/admin/courses", data);
+export const updateCourse = (id, data) => api.put(`/admin/courses/${id}`, data);
+export const deleteCourse = (id) => api.delete(`/admin/courses/${id}`);
 
-export const getAdminQuestions = () => api.get("/admin/questions");
+export const getAdminQuestions = (params = {}) => api.get("/admin/questions", { params });
 export const getQuestionsByAssessment = (assessmentId) =>
   api.get(`/admin/questions/assessment/${assessmentId}`);
 export const getQuestionLibrary = (params = {}) => api.get("/admin/questions/library", { params });
 export const createQuestion = (data) => api.post("/admin/questions", data);
 export const updateQuestion = (id, data) => api.put(`/admin/questions/${id}`, data);
 export const deleteQuestion = (id) => api.delete(`/admin/questions/${id}`);
+export const deleteQuestionsBulk = (ids) => api.delete("/admin/questions/bulk", { data: { ids } });
 
 export const bulkUploadQuestions = (file) => {
   const formData = new FormData();
@@ -29,17 +38,21 @@ export const bulkUploadQuestions = (file) => {
 export const getPracticeCategories = () => api.get("/admin/practice/categories");
 export const createPracticeCategory = (data) => api.post("/admin/practice/categories", data);
 export const createPracticeTopic = (data) => api.post("/admin/practice/topics", data);
-export const bulkUploadPracticeQuestions = (file) => {
+export const createPracticeTopicWithQuestions = (formData) =>
+  api.post("/admin/practice/topics/with-questions", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+export const togglePracticeTopicActive = (id) => api.patch(`/admin/practice/topics/${id}/toggle-active`);
+export const getPracticeCsvTemplate = () => api.get("/admin/practice/questions/template", { responseType: "blob" });
+export const bulkUploadPracticeQuestions = (file, topicId) => {
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("topicId", topicId);
   return api.post("/admin/practice/questions/bulk", formData);
 };
 
 export const getCodingProblemsAdmin = () => api.get("/admin/coding/problems");
 export const createCodingProblem = (data) => api.post("/admin/coding/problems", data);
-
-export const getLeaderboardConfig = () => api.get("/admin/leaderboard/config");
-export const getAdminSettings = () => api.get("/admin/settings");
 
 export const downloadAssessmentReport = (assessmentId, format = "csv") =>
   api.get(`/admin/reports/assessment/${assessmentId}`, {

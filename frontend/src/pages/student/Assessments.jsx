@@ -59,13 +59,6 @@ export default function Assessments() {
             Assessments are automatically filtered by your branch, batch, section, and active schedule window.
           </p>
         </div>
-
-        <div className="hero-aside">
-          <div className="hero-badge">
-            <span className="hero-badge-label">Total Visible</span>
-            <span className="hero-badge-value">{assessments.length}</span>
-          </div>
-        </div>
       </section>
 
       <section className="surface-panel">
@@ -93,9 +86,6 @@ export default function Assessments() {
               (attempt) => attempt.assessment?.id === assessment.id
             );
             const completedAttempt = attemptsForAssessment.find((attempt) => attempt.submitted);
-            const attemptBadge = `${Math.min(attemptsForAssessment.length + 1, assessment.maxAttempts || 1)} of ${
-              assessment.maxAttempts || 1
-            }`;
 
             return (
               <article key={assessment.id} className="card">
@@ -127,7 +117,6 @@ export default function Assessments() {
                 </div>
 
                 <div className="card-actions">
-                  {(assessment.maxAttempts || 1) > 1 && <span className="badge badge-warning">Attempt {attemptBadge}</span>}
                   {activeTab === "Completed" && completedAttempt && (
                     <>
                       <span className="badge badge-success">Score: {completedAttempt.score}</span>

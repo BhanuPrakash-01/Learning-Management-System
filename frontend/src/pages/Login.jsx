@@ -1,39 +1,64 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { jwtDecode } from "jwt-decode";
-import { login as loginApi } from "../services/authService";
+import { login as loginApi, resendVerification } from "../services/authService";
+import { AuthContext } from "../context/auth-context";
 
 export default function Login() {
+  const { login } = useContext(AuthContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setNotice("");
     setLoading(true);
 
     try {
       const res = await loginApi({ email, password });
-      const { token } = res.data;
+      login({
+        name: res.data?.name,
+        email,
+        role: res.data?.role,
+        rollNumber: res.data?.rollNumber,
+        branch: res.data?.branch,
+        batchYear: res.data?.batchYear,
+        section: res.data?.section,
+        forcePasswordChange: res.data?.forcePasswordChange,
+      });
 
-      if (!token) {
-        setError(res.data.error || "Login failed");
-        return;
+      if (res.data?.forcePasswordChange) {
+        navigate("/change-password");
+      } else {
+        navigate(res.data?.role === "ADMIN" ? "/admin" : "/student");
       }
-
-      localStorage.setItem("token", token);
-
-      const decoded = jwtDecode(token);
-      const role = decoded.role;
-
-      navigate(role === "ADMIN" ? "/admin/dashboard" : "/student/home");
     } catch (err) {
       setError(err.response?.data?.error || "Login failed. Check your credentials.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!email) {
+      setError("Enter your email first to resend verification.");
+      return;
+    }
+    setError("");
+    setNotice("");
+    setResending(true);
+    try {
+      const res = await resendVerification({ email });
+      setNotice(res.data?.message || "Verification email sent.");
+    } catch (err) {
+      setError(err.response?.data?.error || "Unable to resend verification email.");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -75,6 +100,7 @@ export default function Login() {
           <p className="auth-subtitle">Sign in to continue to your dashboard.</p>
 
           {error && <div className="alert alert-error">{error}</div>}
+          {notice && <div className="alert alert-success">{notice}</div>}
 
           <form onSubmit={handleLogin} className="auth-actions">
             <div className="form-group">
@@ -99,6 +125,18 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+            </div>
+
+            <div className="card-actions" style={{ marginTop: 0 }}>
+              <Link to="/forgot-password">Forgot password?</Link>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={handleResendVerification}
+                disabled={resending}
+              >
+                {resending ? "Sending..." : "Resend verification email"}
+              </button>
             </div>
 
             <button type="submit" className="btn btn-primary btn-block" disabled={loading}>

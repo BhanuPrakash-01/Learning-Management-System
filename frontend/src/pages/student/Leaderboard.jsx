@@ -12,12 +12,22 @@ const scopes = [
 export default function Leaderboard() {
   const [scope, setScope] = useState("global");
   const [rows, setRows] = useState([]);
+  const [cursor, setCursor] = useState(0);
+  const [nextCursor, setNextCursor] = useState(null);
 
   useEffect(() => {
-    getLeaderboard({ scope })
-      .then((res) => setRows(res.data || []))
+    getLeaderboard({ scope, cursor, size: 50 })
+      .then((res) => {
+        setRows(res.data?.content || []);
+        setNextCursor(res.data?.nextCursor ?? null);
+      })
       .catch((err) => console.error(err));
-  }, [scope]);
+  }, [scope, cursor]);
+
+  const changeScope = (nextScope) => {
+    setScope(nextScope);
+    setCursor(0);
+  };
 
   return (
     <Layout>
@@ -37,7 +47,7 @@ export default function Leaderboard() {
             <button
               key={item.key}
               className={`btn ${scope === item.key ? "btn-primary" : "btn-secondary"} btn-sm`}
-              onClick={() => setScope(item.key)}
+              onClick={() => changeScope(item.key)}
             >
               {item.label}
             </button>
@@ -82,6 +92,15 @@ export default function Leaderboard() {
             </table>
           </div>
         )}
+
+        <div className="card-actions">
+          <button className="btn btn-secondary btn-sm" disabled={cursor <= 0} onClick={() => setCursor((prev) => Math.max(prev - 50, 0))}>
+            Previous
+          </button>
+          <button className="btn btn-secondary btn-sm" disabled={nextCursor == null} onClick={() => setCursor(nextCursor ?? 0)}>
+            Next
+          </button>
+        </div>
       </section>
     </Layout>
   );

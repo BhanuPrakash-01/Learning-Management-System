@@ -34,25 +34,6 @@ export default function MyResults() {
         </div>
       </section>
 
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-label">Total Attempts</div>
-          <div className="stat-value">{data?.summary?.totalAttempts ?? 0}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Average Score</div>
-          <div className="stat-value">{Math.round((data?.summary?.averageScore ?? 0) * 100) / 100}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Best Score</div>
-          <div className="stat-value">{Math.round((data?.summary?.bestScore ?? 0) * 100) / 100}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Practice Questions</div>
-          <div className="stat-value">{data?.summary?.totalPracticeQuestions ?? 0}</div>
-        </div>
-      </div>
-
       <section className="surface-panel">
         <div className="section-heading">
           <div>

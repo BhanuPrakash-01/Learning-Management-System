@@ -7,6 +7,25 @@ import {
   submitPracticeAttempt,
 } from "../../services/practiceService";
 
+function safeParseOptions(raw) {
+  try {
+    const parsed = JSON.parse(raw || "[]");
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed.map((item) => String(item)).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function decodeHtmlEntities(value) {
+  if (value == null) return "";
+  const textarea = document.createElement("textarea");
+  textarea.innerHTML = String(value);
+  return textarea.value;
+}
+
 export default function Practice() {
   const [categories, setCategories] = useState([]);
   const [progress, setProgress] = useState([]);
@@ -15,6 +34,7 @@ export default function Practice() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [feedback, setFeedback] = useState(null);
   const [mode, setMode] = useState("practice");
+  const [topicNotice, setTopicNotice] = useState("");
 
   useEffect(() => {
     Promise.all([getPracticeCategories(), getPracticeProgress()])
@@ -40,8 +60,19 @@ export default function Practice() {
     setMode(selectedMode);
     setFeedback(null);
     setCurrentIndex(0);
-    const res = await getPracticeQuestions(topicId, selectedMode);
-    setQuestions(res.data || []);
+    setTopicNotice("");
+
+    try {
+      const res = await getPracticeQuestions(topicId, selectedMode);
+      setQuestions(res.data || []);
+    } catch (err) {
+      setQuestions([]);
+      if (err.response?.status === 404) {
+        setTopicNotice("This topic is currently unavailable.");
+      } else {
+        setTopicNotice("Unable to load topic questions right now.");
+      }
+    }
   };
 
   const handleAnswer = async (answer) => {
@@ -56,6 +87,63 @@ export default function Practice() {
   const nextQuestion = () => {
     setFeedback(null);
     setCurrentIndex((prev) => Math.min(prev + 1, questions.length - 1));
+  };
+
+  const renderQuestionCard = () => {
+    if (!currentQuestion) {
+      return null;
+    }
+
+    try {
+      const options = safeParseOptions(currentQuestion.options);
+      return (
+        <article className="card question-card mt-2">
+          <h3>{decodeHtmlEntities(currentQuestion.questionText)}</h3>
+          <p style={{ color: "var(--text-muted)" }}>Difficulty: {currentQuestion.difficulty || "Medium"}</p>
+
+          {options.length === 0 ? (
+            <div className="alert alert-error mt-2">
+              Question options are unavailable. Please contact your administrator.
+            </div>
+          ) : (
+            <div className="practice-options-list">
+              {options.map((option, idx) => (
+                <button
+                  key={`${option}-${idx}`}
+                  type="button"
+                  className="practice-option-btn"
+                  onClick={() => handleAnswer(option)}
+                >
+                  <span>{decodeHtmlEntities(option)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {feedback && (
+            <div className={`alert ${feedback.correct ? "alert-success" : "alert-error"}`} style={{ marginTop: "1rem" }}>
+              <p>{feedback.correct ? "Correct answer." : "Incorrect answer."}</p>
+              <p>{feedback.explanation || "No explanation available."}</p>
+              <p>
+                Streak: {feedback.currentStreak} (Best: {feedback.bestStreak})
+              </p>
+            </div>
+          )}
+
+          <div className="card-actions" style={{ marginTop: "1rem" }}>
+            <button className="btn btn-primary btn-sm" onClick={nextQuestion} disabled={currentIndex >= questions.length - 1}>
+              Next Question
+            </button>
+          </div>
+        </article>
+      );
+    } catch {
+      return (
+        <article className="card question-card mt-2">
+          <div className="alert alert-error">This question is currently unavailable. Please contact your administrator.</div>
+        </article>
+      );
+    }
   };
 
   return (
@@ -117,7 +205,7 @@ export default function Practice() {
                 Topic Session ({mode === "test" ? "Topic Test" : "Practice Mode"})
               </h2>
               <p className="section-subtitle">
-                Question {currentIndex + 1} of {questions.length}
+                Question {Math.min(currentIndex + 1, Math.max(questions.length, 1))} of {questions.length}
               </p>
             </div>
             <div className="card-actions">
@@ -133,6 +221,7 @@ export default function Practice() {
                   setSelectedTopic(null);
                   setQuestions([]);
                   setFeedback(null);
+                  setTopicNotice("");
                 }}
               >
                 Exit Topic
@@ -142,37 +231,10 @@ export default function Practice() {
 
           {!currentQuestion ? (
             <div className="empty-state mt-2">
-              <p>No questions available for this topic yet.</p>
+              <p>{topicNotice || "No questions available for this topic yet."}</p>
             </div>
           ) : (
-            <article className="card mt-2">
-              <h3>{currentQuestion.questionText}</h3>
-              <p style={{ color: "var(--text-muted)" }}>Difficulty: {currentQuestion.difficulty || "Medium"}</p>
-
-              <div className="card-actions" style={{ flexDirection: "column", alignItems: "stretch" }}>
-                {(JSON.parse(currentQuestion.options || "[]") || []).map((option) => (
-                  <button key={option} className="btn btn-secondary" onClick={() => handleAnswer(option)}>
-                    {option}
-                  </button>
-                ))}
-              </div>
-
-              {feedback && (
-                <div className={`alert ${feedback.correct ? "alert-success" : "alert-error"}`} style={{ marginTop: "1rem" }}>
-                  <p>{feedback.correct ? "Correct answer." : "Incorrect answer."}</p>
-                  <p>{feedback.explanation || "No explanation available."}</p>
-                  <p>
-                    Streak: {feedback.currentStreak} (Best: {feedback.bestStreak})
-                  </p>
-                </div>
-              )}
-
-              <div className="card-actions" style={{ marginTop: "1rem" }}>
-                <button className="btn btn-primary btn-sm" onClick={nextQuestion} disabled={currentIndex >= questions.length - 1}>
-                  Next Question
-                </button>
-              </div>
-            </article>
+            renderQuestionCard()
           )}
         </section>
       )}

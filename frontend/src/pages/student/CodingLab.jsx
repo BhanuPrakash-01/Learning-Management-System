@@ -114,7 +114,21 @@ export default function CodingLab() {
               {verdict && (
                 <div className={`alert ${verdict.status === "ACCEPTED" ? "alert-success" : "alert-error"}`} style={{ marginTop: "1rem" }}>
                   <p>Status: {verdict.status}</p>
-                  <p>Passed test cases: {verdict.testCasesPassed}</p>
+                  <p>
+                    Passed test cases: {verdict.testCasesPassed}
+                    {typeof verdict.totalTestCases === "number" ? ` / ${verdict.totalTestCases}` : ""}
+                  </p>
+                  {(verdict.details || []).length > 0 && (
+                    <div style={{ marginTop: "0.5rem" }}>
+                      {(verdict.details || []).slice(0, 3).map((detail, index) => (
+                        <div key={index} style={{ marginBottom: "0.4rem", fontSize: "0.85rem" }}>
+                          <strong>Case {detail.testCase || index + 1}:</strong>{" "}
+                          expected <code>{detail.expectedOutput || "-"}</code>, got{" "}
+                          <code>{detail.actualOutput || detail.stderr || detail.compileOutput || "-"}</code>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </>
