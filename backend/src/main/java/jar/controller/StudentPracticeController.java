@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 @RestController
@@ -56,7 +57,7 @@ public class StudentPracticeController {
     @GetMapping("/categories")
     public List<Map<String, Object>> categories() {
         return categoryRepo.findAll().stream().map(category -> {
-            List<PracticeTopic> topics = topicRepo.findByCategory(category);
+            List<PracticeTopic> topics = topicRepo.findByCategoryAndActiveTrue(category);
             Map<String, Object> row = new HashMap<>();
             row.put("id", category.getId());
             row.put("name", category.getName());
@@ -68,7 +69,11 @@ public class StudentPracticeController {
     @GetMapping("/topics/{id}/questions")
     public List<PracticeQuestion> topicQuestions(@PathVariable Long id,
                                                  @RequestParam(required = false, defaultValue = "practice") String mode) {
-        PracticeTopic topic = topicRepo.findById(id).orElseThrow(() -> new RuntimeException("Topic not found"));
+        PracticeTopic topic = topicRepo.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Topic not found"));
+        if (!Boolean.TRUE.equals(topic.getActive())) {
+            throw new NoSuchElementException("Topic not available");
+        }
         List<PracticeQuestion> questions = questionRepo.findByTopic(topic);
         if ("test".equalsIgnoreCase(mode)) {
             return questions.stream().limit(10).toList();

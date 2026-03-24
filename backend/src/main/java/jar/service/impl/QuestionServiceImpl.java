@@ -47,8 +47,13 @@ public class QuestionServiceImpl implements QuestionService {
         Assessment assessment = assessmentRepo.findById(request.getAssessmentId())
                 .orElseThrow(() -> new RuntimeException("Assessment not found"));
 
+        String questionText = sanitizer.sanitizePlainTextPermissive(request.getQuestionText());
+        if (questionText == null) {
+            throw new RuntimeException("Question text is required");
+        }
+
         Question question = Question.builder()
-                .questionText(sanitizer.sanitizeRichText(request.getQuestionText()))
+                .questionText(questionText)
                 .optionA(sanitizer.sanitizePlainText(request.getOptionA()))
                 .optionB(sanitizer.sanitizePlainText(request.getOptionB()))
                 .optionC(sanitizer.sanitizePlainText(request.getOptionC()))
@@ -109,7 +114,12 @@ public class QuestionServiceImpl implements QuestionService {
         Assessment assessment = assessmentRepo.findById(request.getAssessmentId())
                 .orElseThrow(() -> new RuntimeException("Assessment not found"));
 
-        question.setQuestionText(sanitizer.sanitizeRichText(request.getQuestionText()));
+        String questionText = sanitizer.sanitizePlainTextPermissive(request.getQuestionText());
+        if (questionText == null) {
+            throw new RuntimeException("Question text is required");
+        }
+
+        question.setQuestionText(questionText);
         question.setOptionA(sanitizer.sanitizePlainText(request.getOptionA()));
         question.setOptionB(sanitizer.sanitizePlainText(request.getOptionB()));
         question.setOptionC(sanitizer.sanitizePlainText(request.getOptionC()));
@@ -162,101 +172,99 @@ public class QuestionServiceImpl implements QuestionService {
     //   4. All saves happen after all validations pass — so we never get
     //      partial uploads that leave the DB in an inconsistent state.
     @Override
-    public List<Question> bulkUpload(MultipartFile file) throws Exception {
+    public List<Question> bulkUpload(MultipartFile file) {
+        return bulkUploadInternal(file, null);
+    }
 
-        if (file.isEmpty()) {
-            throw new RuntimeException("Uploaded file is empty");
+    @Override
+    public List<Question> bulkUpload(MultipartFile file, Assessment assessment) {
+        if (assessment == null || assessment.getId() == null) {
+            throw new RuntimeException("Assessment is required for this upload flow");
         }
+        return bulkUploadInternal(file, assessment);
+    }
 
-        String contentType = file.getContentType();
-        String originalFilename = file.getOriginalFilename();
-        String fileNameLower = originalFilename == null ? "" : originalFilename.toLowerCase(Locale.ROOT);
-        String contentTypeLower = contentType == null ? "" : contentType.toLowerCase(Locale.ROOT);
-
-        // Accept common csv MIME variants and case-insensitive .csv extension.
-        boolean isCsv = contentTypeLower.contains("csv")
-                || contentTypeLower.contains("excel")
-                || fileNameLower.endsWith(".csv");
-
-        if (!isCsv) {
-            throw new RuntimeException("Only .csv files are accepted. Received: " + contentType);
-        }
+    private List<Question> bulkUploadInternal(MultipartFile file, Assessment fixedAssessment) {
+        validateCsvFile(file);
 
         List<String> errors = new ArrayList<>();
         List<Question> toSave = new ArrayList<>();
 
-        try (CSVReader reader = new CSVReader(
-                new InputStreamReader(file.getInputStream()))) {
-
+        try (CSVReader reader = new CSVReader(new InputStreamReader(file.getInputStream()))) {
             String[] line;
             int rowNumber = 0;
 
             while ((line = reader.readNext()) != null) {
                 rowNumber++;
 
-                // Skip blank lines
                 if (line.length == 0 || (line.length == 1 && line[0].isBlank())) {
                     continue;
                 }
 
                 String firstCell = stripBom(line[0]).trim();
-
-                // Skip header row — detect it by checking if first cell looks like a column name.
                 if (rowNumber == 1 && firstCell.toLowerCase(Locale.ROOT).startsWith("question")) {
                     continue;
                 }
 
-                // ── Validate column count ──────────────────────────────────────────
-                if (line.length < 7) {
+                if (fixedAssessment == null && line.length < 7) {
                     errors.add("Row " + rowNumber + ": expected at least 7 columns, got " + line.length);
                     continue;
                 }
+                if (fixedAssessment != null && line.length < 6) {
+                    errors.add("Row " + rowNumber + ": expected at least 6 columns, got " + line.length);
+                    continue;
+                }
 
-                String questionText  = firstCell;
-                String optionA       = line[1].trim();
-                String optionB       = line[2].trim();
-                String optionC       = line[3].trim();
-                String optionD       = line[4].trim();
-                String correctAnswer = line[5].trim().toUpperCase();
-                String assessmentIdStr = line[6].trim();
-                String subject = line.length > 7 ? line[7].trim() : "General";
-                String topic = line.length > 8 ? line[8].trim() : "General";
-                String difficulty = line.length > 9 ? line[9].trim() : "Medium";
+                String questionTextRaw = firstCell;
+                String optionA = line[1].trim();
+                String optionB = line[2].trim();
+                String optionC = line[3].trim();
+                String optionD = line[4].trim();
+                String correctAnswer = line[5].trim().toUpperCase(Locale.ROOT);
 
-                // ── Validate required fields ───────────────────────────────────────
-                if (questionText.isBlank()) {
+                if (questionTextRaw.isBlank()) {
                     errors.add("Row " + rowNumber + ": questionText is empty");
                     continue;
                 }
-                if (optionA.isBlank() || optionB.isBlank()
-                        || optionC.isBlank() || optionD.isBlank()) {
+                if (optionA.isBlank() || optionB.isBlank() || optionC.isBlank() || optionD.isBlank()) {
                     errors.add("Row " + rowNumber + ": one or more options are empty");
                     continue;
                 }
                 if (!VALID_ANSWERS.contains(correctAnswer)) {
-                    errors.add("Row " + rowNumber + ": correctAnswer must be A, B, C or D — got '"
-                            + correctAnswer + "'");
+                    errors.add("Row " + rowNumber + ": correctAnswer must be A, B, C or D");
                     continue;
                 }
 
-                // ── Parse and look up assessment ───────────────────────────────────
-                Assessment assessment;
-                try {
-                    Long assessmentId = Long.parseLong(assessmentIdStr);
-                    assessment = assessmentRepo.findById(assessmentId).orElse(null);
-                } catch (NumberFormatException e) {
-                    // Accept assessment title in this column as a fallback for admin-friendly CSVs.
-                    assessment = assessmentRepo.findFirstByTitleIgnoreCase(assessmentIdStr).orElse(null);
+                Assessment assessment = fixedAssessment;
+                String subject;
+                String topic;
+                String difficulty;
+
+                if (fixedAssessment == null) {
+                    String assessmentLookup = line[6].trim();
+                    assessment = resolveAssessment(assessmentLookup);
+                    if (assessment == null) {
+                        errors.add("Row " + rowNumber + ": no assessment found for '" + assessmentLookup
+                                + "' (expected assessment ID or exact title)");
+                        continue;
+                    }
+                    subject = line.length > 7 ? line[7].trim() : "General";
+                    topic = line.length > 8 ? line[8].trim() : "General";
+                    difficulty = line.length > 9 ? line[9].trim() : "Medium";
+                } else {
+                    subject = line.length > 6 ? line[6].trim() : "General";
+                    topic = line.length > 7 ? line[7].trim() : "General";
+                    difficulty = line.length > 8 ? line[8].trim() : "Medium";
                 }
-                if (assessment == null) {
-                    errors.add("Row " + rowNumber + ": no assessment found for value '" + assessmentIdStr
-                            + "' (expected assessment ID or exact title)");
+
+                String sanitizedQuestionText = sanitizer.sanitizePlainTextPermissive(questionTextRaw);
+                if (sanitizedQuestionText == null) {
+                    errors.add("Row " + rowNumber + ": questionText became empty after sanitization");
                     continue;
                 }
 
-                // ── All checks passed — stage for saving ───────────────────────────
                 toSave.add(Question.builder()
-                        .questionText(sanitizer.sanitizeRichText(questionText))
+                        .questionText(sanitizedQuestionText)
                         .optionA(sanitizer.sanitizePlainText(optionA))
                         .optionB(sanitizer.sanitizePlainText(optionB))
                         .optionC(sanitizer.sanitizePlainText(optionC))
@@ -268,25 +276,48 @@ public class QuestionServiceImpl implements QuestionService {
                         .assessment(assessment)
                         .build());
             }
-
         } catch (CsvValidationException e) {
             throw new RuntimeException("CSV parse error: " + e.getMessage());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to process CSV: " + e.getMessage());
         }
 
-        // If any row had errors, report ALL of them before saving anything
-        // so admins can fix the file in one round-trip instead of discovering
-        // errors one at a time.
         if (!errors.isEmpty()) {
-            throw new RuntimeException(
-                    "Upload failed. Fix these issues and try again:\n"
-                            + String.join("\n", errors));
+            throw new RuntimeException("Upload failed. Fix these issues and try again:\n" + String.join("\n", errors));
         }
-
         if (toSave.isEmpty()) {
             throw new RuntimeException("Upload failed. No valid question rows were found in the CSV.");
         }
 
         return questionRepo.saveAll(toSave);
+    }
+
+    private void validateCsvFile(MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new RuntimeException("Uploaded file is empty");
+        }
+
+        String contentType = file.getContentType();
+        String originalFilename = file.getOriginalFilename();
+        String fileNameLower = originalFilename == null ? "" : originalFilename.toLowerCase(Locale.ROOT);
+        String contentTypeLower = contentType == null ? "" : contentType.toLowerCase(Locale.ROOT);
+
+        boolean isCsv = contentTypeLower.contains("csv")
+                || contentTypeLower.contains("excel")
+                || fileNameLower.endsWith(".csv");
+
+        if (!isCsv) {
+            throw new RuntimeException("Only .csv files are accepted. Received: " + contentType);
+        }
+    }
+
+    private Assessment resolveAssessment(String assessmentLookup) {
+        try {
+            Long assessmentId = Long.parseLong(assessmentLookup);
+            return assessmentRepo.findById(assessmentId).orElse(null);
+        } catch (NumberFormatException e) {
+            return assessmentRepo.findFirstByTitleIgnoreCase(assessmentLookup).orElse(null);
+        }
     }
 
     private String stripBom(String value) {

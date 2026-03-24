@@ -8,4 +8,6 @@ import java.util.List;
 
 public interface PracticeTopicRepository extends JpaRepository<PracticeTopic, Long> {
     List<PracticeTopic> findByCategory(PracticeCategory category);
+
+    List<PracticeTopic> findByCategoryAndActiveTrue(PracticeCategory category);
 }

@@ -37,4 +37,7 @@ public class PracticeTopic {
     private String description;
 
     private String icon;
+
+    @Builder.Default
+    private Boolean active = true;
 }

@@ -2,24 +2,34 @@ package jar.controller;
 
 import jar.dto.AssessmentRequest;
 import jar.entity.Assessment;
+import jar.entity.Question;
 import jar.service.AssessmentService;
+import jar.service.QuestionService;
 import jar.service.security.AdminAuditService;
 
+import jakarta.transaction.Transactional;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/assessments")
 public class AdminAssessmentController {
 
     private final AssessmentService assessmentService;
+    private final QuestionService questionService;
     private final AdminAuditService adminAuditService;
 
     public AdminAssessmentController(AssessmentService assessmentService,
+                                     QuestionService questionService,
                                      AdminAuditService adminAuditService) {
         this.assessmentService = assessmentService;
+        this.questionService = questionService;
         this.adminAuditService = adminAuditService;
     }
 
@@ -39,6 +49,27 @@ public class AdminAssessmentController {
         adminAuditService.log(auth.getName(), "CREATE_ASSESSMENT", "ASSESSMENT",
                 String.valueOf(saved.getId()), "Assessment created");
         return saved;
+    }
+
+    @PostMapping(value = "/with-questions", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Transactional
+    public ResponseEntity<?> createWithQuestions(@RequestPart("assessmentJson") AssessmentRequest request,
+                                                 @RequestPart(value = "file", required = false) MultipartFile file,
+                                                 Authentication auth) {
+        Assessment savedAssessment = assessmentService.createAssessment(request);
+        List<Question> createdQuestions = List.of();
+        if (file != null && !file.isEmpty()) {
+            createdQuestions = questionService.bulkUpload(file, savedAssessment);
+        }
+
+        adminAuditService.log(auth.getName(), "CREATE_ASSESSMENT_WITH_QUESTIONS", "ASSESSMENT",
+                String.valueOf(savedAssessment.getId()),
+                "Created assessment " + savedAssessment.getTitle() + " with " + createdQuestions.size() + " questions");
+
+        return ResponseEntity.ok(Map.of(
+                "assessment", savedAssessment,
+                "questionCount", createdQuestions.size()
+        ));
     }
 
     @PutMapping("/{id}")

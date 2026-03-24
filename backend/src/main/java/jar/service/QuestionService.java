@@ -1,6 +1,7 @@
 package jar.service;
 
 import jar.dto.QuestionRequest;
+import jar.entity.Assessment;
 import jar.entity.Question;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,5 +34,7 @@ public interface QuestionService {
 
     void deleteQuestions(List<Long> ids);
 
-    List<Question> bulkUpload(MultipartFile file) throws Exception;
+    List<Question> bulkUpload(MultipartFile file);
+
+    List<Question> bulkUpload(MultipartFile file, Assessment assessment);
 }
