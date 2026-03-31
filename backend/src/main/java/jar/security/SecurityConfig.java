@@ -26,8 +26,6 @@ public class SecurityConfig {
     @Value("${allowed.origins:http://localhost:5173,http://localhost:3000}")
     private String allowedOrigins;
 
-    @Value("${security.require-https:false}")
-    private boolean requireHttps;
 
     @Bean
     public JwtAuthFilter jwtAuthFilter(JwtService jwtService) {
@@ -96,10 +94,6 @@ public class SecurityConfig {
             )
             .addFilterBefore(jwtAuthFilter(jwtService),
                 UsernamePasswordAuthenticationFilter.class);
-
-        if (requireHttps) {
-            http.requiresChannel(channel -> channel.anyRequest().requiresSecure());
-        }
 
         return http.build();
     }
